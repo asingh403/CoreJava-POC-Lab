@@ -1,6 +1,9 @@
+package com.poc.files;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -8,7 +11,7 @@ import java.util.stream.Collectors;
 public class ListFilesInDirectory {
 
     public static void main(String[] args) {
-        String folderPath = "your/directory/path"; // Replace with your actual directory path
+        String folderPath = "/Users/ashutoshsingh/Documents/IntellijSpring/CoreJava-POC-Lab/testdata/input-file";
 
         try {
             List<File> filesInFolder = Files.walk(Paths.get(folderPath))
