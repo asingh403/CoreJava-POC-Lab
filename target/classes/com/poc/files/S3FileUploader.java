@@ -1,7 +1,7 @@
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
-import com.amazonaws.regions.Regions;
+import com.amazonaws.client.builder.AwsClientBuilder;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.PutObjectRequest;
@@ -10,41 +10,48 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class S3FileUploader {
 
     private AmazonS3 s3client;
 
-    public S3FileUploader(String accessKey, String secretKey) {
+    public S3FileUploader(String accessKey, String secretKey, String endpoint) {
         BasicAWSCredentials awsCreds = new BasicAWSCredentials(accessKey, secretKey);
         this.s3client = AmazonS3ClientBuilder.standard()
-                .withRegion(Regions.DEFAULT_REGION)
+                .withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(endpoint, "us-east-1"))
                 .withCredentials(new AWSStaticCredentialsProvider(awsCreds))
                 .build();
     }
 
-    public void uploadFiles(String bucketName, String folderPath, List<String> fileNames) {
+    public void uploadFiles(String bucketName, String localFolderPath, String awsFolderPath) {
         try {
-            for (String fileName : fileNames) {
-                File file = new File(folderPath + "/" + fileName);
-                s3client.putObject(new PutObjectRequest(bucketName, "dev/pgpkeys/" + file.getName(), file));
-                System.out.println("Uploaded file: " + fileName);
+            List<File> files = Files.list(Paths.get(localFolderPath))
+                                    .map(path -> path.toFile())
+                                    .collect(Collectors.toList());
+
+            for (File file : files) {
+                String key = awsFolderPath.endsWith("/") ? awsFolderPath + file.getName() : awsFolderPath + "/" + file.getName();
+                s3client.putObject(new PutObjectRequest(bucketName, key, file));
+                System.out.println("Uploaded file: " + file.getName());
             }
         } catch (AmazonServiceException e) {
             System.err.println(e.getErrorMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
     public static void main(String[] args) {
-        // TODO: Replace with your AWS credentials and the files you want to upload
-        String accessKey = "YOUR_ACCESS_KEY";
-        String secretKey = "YOUR_SECRET_KEY";
-        String bucketName = "bddbucket";
+        String accessKey = "test";
+        String secretKey = "jsahuhsajd87298982sjdhudjsahdsbhjsdh";
+        String bucketName = "BDDBUCKET";
+        String endpoint = "https://object.lb4.rbsgrp.net";
 
-        List<String> fileNames = // Add list of files to upload
-        String folderPath = "path_to_your_local_folder";
+        String localFolderPath = "path_to_your_local_folder"; // Replace with your local folder path
+        String awsFolderPath = "bddbacs/nft/keys/";
 
-        S3FileUploader uploader = new S3FileUploader(accessKey, secretKey);
-        uploader.uploadFiles(bucketName, folderPath, fileNames);
+        S3FileUploader uploader = new S3FileUploader(accessKey, secretKey, endpoint);
+        uploader.uploadFiles(bucketName, localFolderPath, awsFolderPath);
     }
 }
