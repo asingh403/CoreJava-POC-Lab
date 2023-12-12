@@ -1,54 +1,60 @@
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
-import software.amazon.awssdk.regions.Region;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.*;
+import com.amazonaws.auth.AWSStaticCredentialsProvider;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.regions.RegionUtils;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
+import com.amazonaws.services.s3.model.*;
 
-import java.nio.file.Paths;
+import java.io.File;
 
 public class S3Uploader {
 
-    private final S3Client s3Client;
+    private final AmazonS3 s3Client;
 
-    public S3Uploader(String accessKeyId, String secretAccessKey, String endpoint) {
-        AwsBasicCredentials awsCreds = AwsBasicCredentials.create(accessKeyId, secretAccessKey);
-        this.s3Client = S3Client.builder()
-                .credentialsProvider(StaticCredentialsProvider.create(awsCreds))
-                .endpointOverride(URI.create(endpoint))
-                .region(Region.AUTO) // or specify your region
+    public S3Uploader(String accessKeyId, String secretAccessKey) {
+        BasicAWSCredentials awsCreds = new BasicAWSCredentials(accessKeyId, secretAccessKey);
+        this.s3Client = AmazonS3ClientBuilder.standard()
+                .withCredentials(new AWSStaticCredentialsProvider(awsCreds))
+                .withRegion(RegionUtils.getRegion().getName()) // Automatically determine the region
                 .build();
     }
 
-    public void uploadFile(String bucketName, String key, String filePath) {
+    public String uploadFile(String bucketName, String key, String filePath) {
         try {
-            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(bucketName)
-                    .key(key)
-                    .build();
-            s3Client.putObject(putObjectRequest, Paths.get(filePath));
+            PutObjectRequest putObjectRequest = new PutObjectRequest(bucketName, key, new File(filePath));
+            s3Client.putObject(putObjectRequest);
             System.out.println("File uploaded to S3: " + key);
-        } catch (S3Exception e) {
-            System.err.println(e.awsErrorDetails().errorMessage());
+
+            // Construct the S3 file URL
+            String fileUrl = String.format("https://%s.s3.%s.amazonaws.com/%s", bucketName, s3Client.getRegionName(), key);
+            return fileUrl;
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
             throw e;
         }
     }
 
     public void deleteExistingFiles(String bucketName, String prefix) {
         try {
-            ListObjectsRequest listObjects = ListObjectsRequest.builder()
-                    .bucket(bucketName)
-                    .prefix(prefix)
-                    .build();
-            ListObjectsResponse res = s3Client.listObjects(listObjects);
-            for (S3Object s3Object : res.contents()) {
-                s3Client.deleteObject(DeleteObjectRequest.builder()
-                        .bucket(bucketName)
-                        .key(s3Object.key())
-                        .build());
+            ListObjectsRequest listObjectsRequest = new ListObjectsRequest().withBucketName(bucketName).withPrefix(prefix);
+            ObjectListing objectListing = s3Client.listObjects(listObjectsRequest);
+
+            while (true) {
+                for (S3ObjectSummary summary : objectListing.getObjectSummaries()) {
+                    s3Client.deleteObject(bucketName, summary.getKey());
+                }
+
+                // Check if the list is truncated, and get the next batch of objects
+                if (objectListing.isTruncated()) {
+                    objectListing = s3Client.listNextBatchOfObjects(objectListing);
+                } else {
+                    break;
+                }
             }
+
             System.out.println("Deleted existing files in S3 bucket: " + bucketName);
-        } catch (S3Exception e) {
-            System.err.println(e.awsErrorDetails().errorMessage());
+        } catch (Exception e) {
+            System.err.println(e.getMessage());
             throw e;
         }
     }
