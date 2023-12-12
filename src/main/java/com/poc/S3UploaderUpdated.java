@@ -7,7 +7,7 @@ import com.amazonaws.services.s3.model.*;
 
 import java.io.File;
 
-public class S3Uploader {
+public class S3UploaderUpdated {
 
     private final AmazonS3 s3Client;
 
