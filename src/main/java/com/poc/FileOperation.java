@@ -9,6 +9,9 @@ public class FileOperation {
         String sourceDirPath = "src/main/java/resources/"; // Source directory
         String destinationDirPath = "src/main/java/basefile/"; // Destination directory
 
+        // Delete existing payment files in the destination directory
+        deleteExistingPaymentFiles(destinationDirPath, "BDD.BACS18");
+
         // Find the file in the source directory
         File sourceDir = new File(sourceDirPath);
         FilenameFilter filter = (dir, name) -> name.startsWith("BDD.BACS18");
@@ -31,6 +34,20 @@ public class FileOperation {
 
         // Step 3: Update the file content
         updateFileContent(renamedFilePath);
+    }
+
+    private static void deleteExistingPaymentFiles(String destinationDirPath, String filePrefix) {
+        File destinationDir = new File(destinationDirPath);
+        FilenameFilter filter = (dir, name) -> name.startsWith(filePrefix);
+        File[] files = destinationDir.listFiles(filter);
+
+        if (files != null) {
+            for (File file : files) {
+                if (!file.delete()) {
+                    System.out.println("Failed to delete file: " + file.getPath());
+                }
+            }
+        }
     }
 
     private static String copyFile(String sourcePath, String destinationDir) throws IOException {
