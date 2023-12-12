@@ -1,15 +1,30 @@
 import java.io.*;
 import java.nio.file.*;
 import java.util.Random;
+import java.util.regex.*;
 
 public class FileOperation {
 
     public static void main(String[] args) throws IOException {
-        String sourcePath = "src/main/java/resources/BDD.BACS18.ABC00012.PM"; // Example original file path
-        String destinationPath = "src/main/java/basefile/"; // Destination directory
+        String sourceDirPath = "src/main/java/resources/"; // Source directory
+        String destinationDirPath = "src/main/java/basefile/"; // Destination directory
+
+        // Find the file in the source directory
+        File sourceDir = new File(sourceDirPath);
+        FilenameFilter filter = (dir, name) -> name.startsWith("BDD.BACS18");
+        File[] files = sourceDir.listFiles(filter);
+
+        if (files == null || files.length == 0) {
+            System.out.println("No files found in the source directory.");
+            return;
+        }
+
+        // Assuming you want to process the first file that matches the criteria
+        File fileToProcess = files[0];
+        String filePathToProcess = fileToProcess.getPath();
 
         // Step 1: Copy the file
-        String copiedFilePath = copyFile(sourcePath, destinationPath);
+        String copiedFilePath = copyFile(filePathToProcess, destinationDirPath);
 
         // Step 2: Rename the file with random digits
         String renamedFilePath = renameFile(copiedFilePath);
@@ -27,7 +42,7 @@ public class FileOperation {
     }
 
     private static String renameFile(String filePath) {
-        String newName = filePath.replaceAll("ABC\\d{5}", "ABC" + getRandomFiveDigits()); // Replaces the last 5 digits
+        String newName = filePath.replaceAll("ABC\\d{5}", "ABC" + getRandomFiveDigits());
         File file = new File(filePath);
         File renamedFile = new File(newName);
         if (file.renameTo(renamedFile)) {
@@ -47,7 +62,7 @@ public class FileOperation {
 
     private static String getRandomFiveDigits() {
         Random random = new Random();
-        int number = 10000 + random.nextInt(90000); // Generate a random 5-digit number
+        int number = 10000 + random.nextInt(90000);
         return String.valueOf(number);
     }
 }
